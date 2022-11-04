@@ -1,0 +1,4 @@
+.idea
+config.py
+petsy.db
+__pycache__
