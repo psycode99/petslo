@@ -43,7 +43,7 @@ class Users(UserMixin, db.Model):
     email = db.Column(db.String(50), unique=True)
     username = db.Column(db.Text, unique=True)
     password = db.Column(db.String(1000))
-    user_image = db.Column(db.Text(1000), nullable=True)
+    user_image = db.Column(db.String, nullable=True)
     bio = db.Column(db.Text, nullable=True)
     country = db.Column(db.String(1000), nullable=True)
     state = db.Column(db.String(1000), nullable=True)
@@ -194,9 +194,29 @@ def update_profile():
         user.city = edit_form.city.data
         db.session.commit()
         return redirect(url_for('dashboard', ll=user_id, user=user,
-                           logged_in=current_user.is_authenticated, posts=posts))
+                        logged_in=current_user.is_authenticated, posts=posts))
 
     return render_template('profile.html', form=edit_form)
+
+
+@app.route('/update_image', methods=['GET', 'POST'])
+def update_image():
+    user_id = request.args.get('user')
+    user = Users.query.filter_by(id=user_id).first()
+    posts = Posts.query.filter_by(user_id=user_id).all()
+    if request.method == 'POST':
+        file = request.files['image_upload']
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(request.url)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            user.user_image = filename
+            db.session.commit()
+        return redirect(url_for('dashboard', ll=user_id, user=user,
+                           logged_in=current_user.is_authenticated, posts=posts))
+    return render_template('image.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

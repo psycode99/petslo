@@ -5,7 +5,7 @@
             {% if user.user_image  == None %}
             <img style='border-radius: 50%;height: 2.5ems;' src="{{'georgefavour.sochi@gmail.com' | gravatar}}" alt="">
             {% else %}
-            <img style='border-radius: 50%;height: 2.5ems;' src="{{user.user_image}}" alt="">
+            <img style='border-radius: 50%;height:200px;width:200px;' src="/static/user_images/{{user.user_image}}" alt="">
             {% endif %}
         </center>
         <center><b>{{user.username}}</b></center>
@@ -17,7 +17,9 @@
             {{user.bio}}</p></center>
         {% endif %}
        <a href="{{url_for('update_profile', user=user.id)}}">
-        <button type="submit" class='btn btn-primary'>Edit Profile</button>
+        <button type="submit" class='btn btn-primary px-2 py-2'>Edit Profile</button>
+            </a>  <a href="{{url_for('update_image', user=user.id)}}">
+        <button type="submit" class='btn btn-primary px-2 py-2'>Profile Image</button>
             </a>
 
     </div>
@@ -57,7 +59,7 @@
                         <br>
 
                 <center>
-                        <label class="btn btn-primary">Pet Image<input type="file" name='image_upload' style="display:none;"></label>
+                        <label class="btn btn-primary px-2 py-2">Pet Image<input type="file" name='image_upload' style="display:none;"></label>
 
 
                     </center>
