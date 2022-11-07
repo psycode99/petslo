@@ -1,18 +1,26 @@
 from flask import *
+from sqlalchemy import ForeignKey
+from flask_bootstrap import Bootstrap
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_required, LoginManager, current_user, login_user, logout_user
-from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 from flask_gravatar import Gravatar
-
+from werkzeug.utils import secure_filename
+import os
+from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+
 import config
+from edit_form import UpdateProfileForm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.app_key
+Bootstrap(app)
 
+ALLOWED_EXTENSIONS = {'png', 'jpg'}
 app.config['SQLALCHEMY_DATABASE_URI'] = config.database_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = config.uploads
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
@@ -37,18 +45,31 @@ class Users(UserMixin, db.Model):
     password = db.Column(db.String(1000))
     user_image = db.Column(db.Text(1000), nullable=True)
     bio = db.Column(db.Text, nullable=True)
+    country = db.Column(db.String(1000), nullable=True)
+    state = db.Column(db.String(1000), nullable=True)
+    city = db.Column(db.String(1000), nullable=True)
     posts = relationship('Posts', back_populates='username')
 
 
 class Posts(db.Model):
     __tablename__ = 'posts'
-    id = db.Column(db.Integer, ForeignKey('users.id'), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, ForeignKey('users.id'))
     username = relationship('Users', back_populates='posts')
-    text = db.Column(db.Integer, nullable=True)
-    image = db.Column(db.Text, nullable=False)
+    pet_name = db.Column(db.String(1000), nullable=False)
+    pet_type = db.Column(db.String(1000), nullable=False)
+    pet_specie = db.Column(db.String(1000), nullable=False)
+    pet_about = db.Column(db.String(1000), nullable=False)
+    date = db.Column(db.String(1000), nullable=False)
+    image = db.Column(db.String, nullable=False)
 
 
 db.create_all()
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @login_manager.user_loader
@@ -72,12 +93,9 @@ def login():
         if verify_username in all_users:
             checked_password = check_password_hash(verify_username.password, password)
             if checked_password:
-                name = verify_username.name
-                user_n = verify_username.username
-                bio = verify_username.bio
-                user_pic = verify_username.user_image
+                ll = verify_username.id
                 login_user(verify_username)
-                return redirect(url_for('dashboard', username=user_n, bio=bio, name=name, user_pic=user_pic))
+                return redirect(url_for('dashboard', logged_in=current_user.is_authenticated, ll=ll))
             else:
                 error = 'Invalid Password'
                 return redirect(url_for('login', error=error))
@@ -114,12 +132,71 @@ def signup():
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
-    bio = request.args.get('bio')
-    user = request.args.get('username')
-    user_pic = request.args.get('user_pic')
-    name = request.args.get('name').title()
-    return render_template('dashboard.html', username=user, bio=bio, name=name, user_pic=user_pic)
+    user_id = int(request.args.get('ll'))
+    user = Users.query.filter_by(id=user_id).first()
+    posts = Posts.query.filter_by(user_id=user_id).all()
+    if request.method == 'POST':
+        pet_name = request.form.get('petname')
+        pet_type = request.form.get('type')
+        pet_specie = request.form.get('specie')
+        about = request.form.get('about')
+        file = request.files['image_upload']
+        today = datetime.now()
+        day = today.day
+        year = today.year
 
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(request.url)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            date = f"{day} {today.strftime('%b')}, {year}"
+            new_post = Posts(pet_name=pet_name, username=current_user, pet_type=pet_type, pet_specie=pet_specie,
+                             pet_about=about,
+                             date=date,
+                             image=filename)
+            db.session.add(new_post)
+            db.session.flush()
+            db.session.commit()
+            return redirect(url_for('dashboard', ll=user_id, user=user,
+                           logged_in=current_user.is_authenticated, posts=posts))
+
+    return render_template('dashboard.html', user=user,
+                           logged_in=current_user.is_authenticated, posts=posts)
+
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
+
+
+@app.route('/update_profile', methods=['GET', 'POST'])
+def update_profile():
+    user_id = request.args.get('user')
+    user = Users.query.filter_by(id=user_id).first()
+    posts = Posts.query.filter_by(user_id=user_id).all()
+    edit_form = UpdateProfileForm(
+        name=user.name,
+        bio=user.bio,
+        email=user.email,
+        country=user.country,
+        state=user.state,
+        city=user.city
+    )
+    if edit_form.validate_on_submit():
+        user.name = edit_form.name.data
+        user.email = edit_form.email.data
+        user.bio = edit_form.bio.data
+        user.country = edit_form.country.data
+        user.state = edit_form.state.data
+        user.city = edit_form.city.data
+        db.session.commit()
+        return redirect(url_for('dashboard', ll=user_id, user=user,
+                           logged_in=current_user.is_authenticated, posts=posts))
+
+    return render_template('profile.html', form=edit_form)
 
 if __name__ == '__main__':
     app.run(debug=True)
