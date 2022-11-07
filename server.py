@@ -62,6 +62,9 @@ class Posts(db.Model):
     pet_about = db.Column(db.String(1000), nullable=False)
     date = db.Column(db.String(1000), nullable=False)
     image = db.Column(db.String, nullable=False)
+    country = db.Column(db.String(1000), nullable=True)
+    state = db.Column(db.String(1000), nullable=True)
+    city = db.Column(db.String(1000), nullable=True)
 
 
 db.create_all()
@@ -154,6 +157,9 @@ def dashboard():
             date = f"{day} {today.strftime('%b')}, {year}"
             new_post = Posts(pet_name=pet_name, username=current_user, pet_type=pet_type, pet_specie=pet_specie,
                              pet_about=about,
+                             state=user.state,
+                             country=user.country,
+                             city=user.city,
                              date=date,
                              image=filename)
             db.session.add(new_post)
@@ -193,6 +199,11 @@ def update_profile():
         user.state = edit_form.state.data
         user.city = edit_form.city.data
         db.session.commit()
+        for post in posts:
+            post.city = user.city
+            post.country = user.country
+            post.state = user.state
+            db.session.commit()
         return redirect(url_for('dashboard', ll=user_id, user=user,
                         logged_in=current_user.is_authenticated, posts=posts))
 
@@ -217,6 +228,16 @@ def update_image():
         return redirect(url_for('dashboard', ll=user_id, user=user,
                            logged_in=current_user.is_authenticated, posts=posts))
     return render_template('image.html')
+
+
+@app.route('/feed', methods=['GET', 'POST'])
+def feed():
+    user_id = request.args.get('user')
+    user = Users.query.filter_by(id=user_id).first()
+    user_loc = user.country
+    all_posts = Posts.query.filter_by(country=user_loc).all()
+    print(all_posts)
+    return render_template('feed.html', posts=all_posts, logged_in=current_user.is_authenticated, user=user, feed=True)
 
 if __name__ == '__main__':
     app.run(debug=True)
