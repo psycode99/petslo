@@ -134,6 +134,7 @@ def signup():
 
 
 @app.route('/dashboard', methods=['GET', 'POST'])
+@login_required
 def dashboard():
     user_id = int(request.args.get('ll'))
     user = Users.query.filter_by(id=user_id).first()
@@ -179,6 +180,7 @@ def logout():
 
 
 @app.route('/update_profile', methods=['GET', 'POST'])
+@login_required
 def update_profile():
     user_id = request.args.get('user')
     user = Users.query.filter_by(id=user_id).first()
@@ -211,6 +213,7 @@ def update_profile():
 
 
 @app.route('/update_image', methods=['GET', 'POST'])
+@login_required
 def update_image():
     user_id = request.args.get('user')
     user = Users.query.filter_by(id=user_id).first()
@@ -231,6 +234,7 @@ def update_image():
 
 
 @app.route('/feed', methods=['GET', 'POST'])
+@login_required
 def feed():
     user_id = request.args.get('user')
     user = Users.query.filter_by(id=user_id).first()
