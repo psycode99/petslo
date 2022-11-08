@@ -240,8 +240,14 @@ def feed():
     user = Users.query.filter_by(id=user_id).first()
     user_loc = user.country
     all_posts = Posts.query.filter_by(country=user_loc).all()
-    print(all_posts)
     return render_template('feed.html', posts=all_posts, logged_in=current_user.is_authenticated, user=user, feed=True)
+
+
+@app.route('/post')
+def post():
+    post_id = request.args.get('post_id')
+    post = Posts.query.filter_by(id=post_id).first()
+    return render_template('post.html', post=post)
 
 if __name__ == '__main__':
     app.run(debug=True)

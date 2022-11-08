@@ -27,7 +27,7 @@
                         <img src="/static/user_images/{{post.image}}" alt="Image" class="img-fluid" style="height:400px;width:auto">
                         <figcaption class="d-flex align-items-center justify-content-center">
                             <h2>{{post.pet_type}}</h2>
-                            <a href="photo-detail.html">View more</a>
+                            <a href="{{url_for('post', post_id=post.id)}}">View more</a>
                         </figcaption>
                     </figure>
                     <div class="d-flex justify-content-between tm-text-gray">
