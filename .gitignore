@@ -2,3 +2,10 @@
 config.py
 petsy.db
 __pycache__
+
+
+        console.log(user_input);
+        const node = document.createElement("li");
+        const textnode = document.createTextNode(user_name + ': ' + user_input);
+        node.appendChild(textnode);
+        document.getElementById("messages").appendChild(node);

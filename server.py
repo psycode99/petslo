@@ -9,12 +9,13 @@ from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from flask_socketio import SocketIO, send, emit
 import config
 from edit_form import UpdateProfileForm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.app_key
+socketio = SocketIO(app, cors_allowed_origins='*')
 Bootstrap(app)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg'}
@@ -26,14 +27,16 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-gravatar = Gravatar(app,
-                    size=100,
-                    rating='g',
-                    default='retro',
-                    force_default=False,
-                    force_lower=False,
-                    use_ssl=False,
-                    base_url=None)
+gravatar = Gravatar(
+    app,
+    size=100,
+    rating='g',
+    default='retro',
+    force_default=False,
+    force_lower=False,
+    use_ssl=False,
+    base_url=None
+)
 
 
 class Users(UserMixin, db.Model):
@@ -82,7 +85,11 @@ def load_user(user_id):
 
 @app.route('/')
 def home():
-    return render_template('index.html', logged_in=current_user.is_authenticated, current_user=current_user)
+    return render_template(
+        'index.html',
+        logged_in=current_user.is_authenticated,
+        current_user=current_user
+    )
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -98,7 +105,12 @@ def login():
             if checked_password:
                 ll = verify_username.id
                 login_user(verify_username)
-                return redirect(url_for('dashboard', logged_in=current_user.is_authenticated, ll=ll))
+                return redirect(
+                    url_for(
+                        'dashboard',
+                        logged_in=current_user.is_authenticated,
+                        ll=ll)
+                )
             else:
                 error = 'Invalid Password'
                 return redirect(url_for('login', error=error))
@@ -119,14 +131,19 @@ def signup():
         password = request.form.get('password')
         verify_email = Users.query.filter_by(email=email).first()
         if verify_email in all_users:
-            error = 'This email address is already in use'
+            error = 'This email address is already in use. Login instead?'
             return redirect(url_for('login', error=error))
         verify_username = Users.query.filter_by(username=username).first()
         if verify_username in all_users:
             error = 'This username is already taken. Try another one'
             return redirect(url_for('signup', error=error))
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=8)
-        new_user = Users(name=name, email=email, username=username, password=hashed_password)
+        new_user = Users(
+            name=name.title(),
+            email=email,
+            username=username,
+            password=hashed_password
+        )
         db.session.add(new_user)
         db.session.commit()
         return redirect(url_for('login', user=new_user))
@@ -156,21 +173,37 @@ def dashboard():
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             date = f"{day} {today.strftime('%b')}, {year}"
-            new_post = Posts(pet_name=pet_name, username=current_user, pet_type=pet_type, pet_specie=pet_specie,
-                             pet_about=about,
-                             state=user.state,
-                             country=user.country,
-                             city=user.city,
-                             date=date,
-                             image=filename)
+            new_post = Posts(
+                pet_name=pet_name.title(),
+                username=current_user,
+                pet_type=pet_type.title(),
+                pet_specie=pet_specie.title(),
+                pet_about=about,
+                state=user.state,
+                country=user.country,
+                city=user.city,
+                date=date,
+                image=filename
+            )
             db.session.add(new_post)
             db.session.flush()
             db.session.commit()
-            return redirect(url_for('dashboard', ll=user_id, user=user,
-                           logged_in=current_user.is_authenticated, posts=posts))
+            return redirect(
+                url_for(
+                    'dashboard',
+                    ll=user_id,
+                    user=user,
+                    logged_in=current_user.is_authenticated,
+                    posts=posts,
+                    current_user=current_user)
+            )
 
-    return render_template('dashboard.html', user=user,
-                           logged_in=current_user.is_authenticated, posts=posts)
+    return render_template(
+        'dashboard.html',
+        user=user,
+        logged_in=current_user.is_authenticated,
+        posts=posts
+    )
 
 
 @app.route('/logout')
@@ -206,8 +239,14 @@ def update_profile():
             post.country = user.country
             post.state = user.state
             db.session.commit()
-        return redirect(url_for('dashboard', ll=user_id, user=user,
-                        logged_in=current_user.is_authenticated, posts=posts))
+        return redirect(
+            url_for(
+                'dashboard',
+                ll=user_id,
+                user=user,
+                logged_in=current_user.is_authenticated,
+                posts=posts)
+        )
 
     return render_template('profile.html', form=edit_form)
 
@@ -228,8 +267,14 @@ def update_image():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             user.user_image = filename
             db.session.commit()
-        return redirect(url_for('dashboard', ll=user_id, user=user,
-                           logged_in=current_user.is_authenticated, posts=posts))
+        return redirect(
+            url_for(
+                'dashboard',
+                ll=user_id,
+                user=user,
+                logged_in=current_user.is_authenticated,
+                posts=posts)
+        )
     return render_template('image.html')
 
 
@@ -240,14 +285,51 @@ def feed():
     user = Users.query.filter_by(id=user_id).first()
     user_loc = user.country
     all_posts = Posts.query.filter_by(country=user_loc).all()
-    return render_template('feed.html', posts=all_posts, logged_in=current_user.is_authenticated, user=user, feed=True)
+    return render_template(
+        'feed.html',
+        posts=all_posts,
+        logged_in=current_user.is_authenticated,
+        user=user,
+        feed=True
+    )
 
 
 @app.route('/post')
+@login_required
 def post():
     post_id = request.args.get('post_id')
+    user_id = int(request.args.get('ll'))
     post = Posts.query.filter_by(id=post_id).first()
-    return render_template('post.html', post=post)
+    post_author = Users.query.filter_by(id=post.user_id).first()
+    user = Users.query.filter_by(id=user_id).first()
+    user_loc = user.country
+    all_posts = Posts.query.filter_by(country=user_loc).all()
+    return render_template(
+        'post.html',
+        post=post,
+        posts=all_posts,
+        user=user,
+        logged_in=current_user.is_authenticated,
+        auth=post_author
+    )
+
+
+def messageReceived():
+    print('message was received!!!')
+
+
+@socketio.on('my event')
+def handle_my_custom_event(json):
+    print('received my event: ' + str(json))
+    socketio.emit('my response', json, callback=messageReceived)
+
+
+
+@app.route('/dm', methods=['GET'])
+#@login_required
+def contact():
+    return render_template('contact.html')
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)

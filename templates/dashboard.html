@@ -8,7 +8,8 @@
             <img style='border-radius: 50%;height:200px;width:200px;' src="/static/user_images/{{user.user_image}}" alt="">
             {% endif %}
         </center>
-        <center><b>{{user.username}}</b></center>
+        <center><b>{{user.name}}</b></center>
+        <center>@{{user.username}}</center>
         {% if user.bio == None %}
         <p>Please update your profile to add location for us to find babysitters and pets in your location</p>
         {% else %}
@@ -17,6 +18,7 @@
             {{user.bio}}</p></center>
         {% endif %}
        <a href="{{url_for('update_profile', user=user.id)}}">
+           {% if user.id == current_user.id %}
         <button type="submit" class='btn btn-primary px-2 py-2'>Edit Profile</button>
             </a>  <a href="{{url_for('update_image', user=user.id)}}">
         <button type="submit" class='btn btn-primary px-2 py-2'>Profile Image</button>
@@ -26,6 +28,7 @@
         </center>
     <center>
         <br>
+
     <form class="login100-form validate-form" method="post" enctype="multipart/form-data">
 					<span class="login100-form-logo">
 						<i class="zmdi zmdi-landscape"></i>
@@ -76,12 +79,14 @@
 
 				</form>
         </center>
-
+{% else %}
+<div></div>
+{% endif %}
     <div class="container-fluid tm-container-content tm-mt-60">
         <div class="row mb-4">
             <center>
             <h2 class="col-6 tm-text-primary">
-                Latest Posts of {{user.name}}
+                {{user.name}}'s Posts
             </h2>
                 </center>
 
@@ -93,7 +98,7 @@
                     <img src="/static/user_images/{{post.image}}" alt="Image" class="img-fluid" style="height:400px;width:auto">
                     <figcaption class="d-flex align-items-center justify-content-center">
                         <h2>{{post.pet_type}}</h2>
-                        <a href="photo-detail.html">View more</a>
+                        <a href="{{url_for('post', post_id=post.id, ll=user.id)}}">View more</a>
                     </figcaption>
                 </figure>
                 <div class="d-flex justify-content-between tm-text-gray">
