@@ -11,9 +11,7 @@
         });
         $('#sendBtn').on('click', function () {
         var user_input = $('#message').val()
-        var user_name = $('#username').val()
         socket.emit( 'my event', {
-            user_name : user_name,
             message : user_input
           })
         console.log('message sent');
@@ -26,12 +24,11 @@
 
       socket.on( 'my response', function( msg ) {
         console.log( msg )
-        if( typeof msg.user_name !== 'undefined' ) {
+        if( typeof msg.message !== 'undefined' ) {
             const node = document.createElement("li");
-            const textnode = document.createTextNode(msg.user_name + ': ' + msg.message);
+            const textnode = document.createTextNode(msg.message);
             node.appendChild(textnode);
             document.getElementById("messages").appendChild(node);
-
         }
       })
     </script>
@@ -40,7 +37,6 @@
 
 <div id="messages"></div>
 
-<input type="text" id="username" placeholder="User Name"/>
 <input type="text" id="message" placeholder="Messages"/>
 <button id="sendBtn">Send</button>
 

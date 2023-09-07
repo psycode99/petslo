@@ -34,7 +34,7 @@
 
                     </div>
                 <div class="mb-4">
-                        <h4 class="tm-text-gray-dark mb-3">Posted By:<a href="{{url_for('dashboard', ll=auth.id)}}"> {{auth.name}}</a> </h4>
+                        <h4 class="tm-text-gray-dark mb-3">Posted By:<a href="{{url_for('dashboard', ll=auth.id)}}"> {{auth.fname}}</a> </h4>
 
                     </div>
                 <div class="mb-4">
@@ -42,7 +42,7 @@
 
                     </div>
                  <div class="mb-4">
-                     <a href="{{url_for('contact', em=auth.email)}}">
+                     <a href="{{url_for('contact')}}">
                      <button class="btn btn-primary">Email Owner</button>
                         </a>
                     </div>

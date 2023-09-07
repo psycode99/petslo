@@ -45,8 +45,13 @@
 								{% else %}
 								<center><p  style="color:red">{{error}}</p></center>
 								{% endif %}
-					<div class="wrap-input100 validate-input" data-validate = "Enter username">
-						<input class="input100" type="text" name="name" placeholder="Name">
+					<div class="wrap-input100 validate-input" data-validate = "first name">
+						<input class="input100" type="text" name="fname" placeholder="First Name">
+						<span class="focus-input100" data-placeholder="&#xf207;"></span>
+					</div>
+
+					<div class="wrap-input100 validate-input" data-validate = "last name">
+						<input class="input100" type="text" name="lname" placeholder="Last Name">
 						<span class="focus-input100" data-placeholder="&#xf207;"></span>
 					</div>
 
@@ -55,7 +60,7 @@
 						<span class="focus-input100" data-placeholder="&#xf207;"></span>
 					</div>
 
-					<div class="wrap-input100 validate-input" data-validate = "Enter username">
+					<div class="wrap-input100 validate-input" data-validate = "email">
 						<input class="input100" type="email" name="email" placeholder="Email Address">
 						<span class="focus-input100" data-placeholder="&#xf207;"></span>
 					</div>

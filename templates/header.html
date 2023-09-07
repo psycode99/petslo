@@ -38,14 +38,14 @@ https://templatemo.com/tm-556-catalog-z
                 {% if logged_in == True and feed == True %}
 
                 <li class="nav-item">
-                    <a class="nav-link nav-link-1 " aria-current="page" href="{{url_for('dashboard', ll=user.id)}}">Dashboard</a>
+                    <a class="nav-link nav-link-1 " aria-current="page" href="{{url_for('dashboard', ll=current_user.id)}}">Dashboard</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link nav-link-1 " aria-current="page" href="{{url_for('logout')}}">Logout</a>
                 </li>
                 {% elif logged_in == true %}
                 <li class="nav-item">
-                    <a class="nav-link nav-link-1 " aria-current="page" href="{{url_for('feed', user=user.id)}}">Feed</a>
+                    <a class="nav-link nav-link-1 " aria-current="page" href="{{url_for('feed', user=current_user.id)}}">Feed</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link nav-link-1 " aria-current="page" href="{{url_for('logout')}}">Logout</a>

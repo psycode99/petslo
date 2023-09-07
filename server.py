@@ -1,6 +1,6 @@
 from flask import *
 from sqlalchemy import ForeignKey
-from flask_bootstrap import Bootstrap
+from flask_bootstrap import Bootstrap5
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_required, LoginManager, current_user, login_user, logout_user
 from sqlalchemy.orm import relationship
@@ -11,17 +11,18 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_socketio import SocketIO, send, emit
 import config
-from edit_form import UpdateProfileForm
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.app_key
 socketio = SocketIO(app, cors_allowed_origins='*')
-Bootstrap(app)
+Bootstrap5(app)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg'}
 app.config['SQLALCHEMY_DATABASE_URI'] = config.database_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = config.uploads
+app.config.update(GEOIPIFY_API_KEY=config.app_key)
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
@@ -42,15 +43,14 @@ gravatar = Gravatar(
 class Users(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(30), nullable=False, unique=False)
+    fname = db.Column(db.String(30), nullable=False, unique=False)
+    lname = db.Column(db.String(30), nullable=False, unique=False)
     email = db.Column(db.String(50), unique=True)
     username = db.Column(db.Text, unique=True)
     password = db.Column(db.String(1000))
     user_image = db.Column(db.String, nullable=True)
     bio = db.Column(db.Text, nullable=True)
-    country = db.Column(db.String(1000), nullable=True)
-    state = db.Column(db.String(1000), nullable=True)
-    city = db.Column(db.String(1000), nullable=True)
+    location = db.Column(db.String(1000), nullable=True)
     posts = relationship('Posts', back_populates='username')
 
 
@@ -65,12 +65,11 @@ class Posts(db.Model):
     pet_about = db.Column(db.String(1000), nullable=False)
     date = db.Column(db.String(1000), nullable=False)
     image = db.Column(db.String, nullable=False)
-    country = db.Column(db.String(1000), nullable=True)
-    state = db.Column(db.String(1000), nullable=True)
-    city = db.Column(db.String(1000), nullable=True)
+    location = db.Column(db.String(1000), nullable=True)
 
 
-db.create_all()
+with app.app_context():
+    db.create_all()
 
 
 def allowed_file(filename):
@@ -125,7 +124,8 @@ def signup():
     error = request.args.get('error')
     all_users = db.session.query(Users).all()
     if request.method == 'POST':
-        name = request.form.get('name')
+        fname = request.form.get('fname')
+        lname = request.form.get('lname')
         email = request.form.get('email')
         username = request.form.get('username')
         password = request.form.get('password')
@@ -139,7 +139,8 @@ def signup():
             return redirect(url_for('signup', error=error))
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=8)
         new_user = Users(
-            name=name.title(),
+            fname=fname.title(),
+            lname=lname.title(),
             email=email,
             username=username,
             password=hashed_password
@@ -157,10 +158,10 @@ def dashboard():
     user = Users.query.filter_by(id=user_id).first()
     posts = Posts.query.filter_by(user_id=user_id).all()
     if request.method == 'POST':
-        pet_name = request.form.get('petname')
-        pet_type = request.form.get('type')
-        pet_specie = request.form.get('specie')
-        about = request.form.get('about')
+        pet_name = request.form['petname']
+        pet_type = request.form['type']
+        pet_specie = request.form['specie']
+        about = request.form['about']
         file = request.files['image_upload']
         today = datetime.now()
         day = today.day
@@ -179,9 +180,7 @@ def dashboard():
                 pet_type=pet_type.title(),
                 pet_specie=pet_specie.title(),
                 pet_about=about,
-                state=user.state,
-                country=user.country,
-                city=user.city,
+                location=user.location,
                 date=date,
                 image=filename
             )
@@ -216,57 +215,27 @@ def logout():
 @login_required
 def update_profile():
     user_id = request.args.get('user')
-    user = Users.query.filter_by(id=user_id).first()
+    user = Users.query.filter_by(id=user_id).first() 
     posts = Posts.query.filter_by(user_id=user_id).all()
-    edit_form = UpdateProfileForm(
-        name=user.name,
-        bio=user.bio,
-        email=user.email,
-        country=user.country,
-        state=user.state,
-        city=user.city
-    )
-    if edit_form.validate_on_submit():
-        user.name = edit_form.name.data
-        user.email = edit_form.email.data
-        user.bio = edit_form.bio.data
-        user.country = edit_form.country.data
-        user.state = edit_form.state.data
-        user.city = edit_form.city.data
-        db.session.commit()
-        for post in posts:
-            post.city = user.city
-            post.country = user.country
-            post.state = user.state
-            db.session.commit()
-        return redirect(
-            url_for(
-                'dashboard',
-                ll=user_id,
-                user=user,
-                logged_in=current_user.is_authenticated,
-                posts=posts)
-        )
-
-    return render_template('profile.html', form=edit_form)
-
-
-@app.route('/update_image', methods=['GET', 'POST'])
-@login_required
-def update_image():
-    user_id = request.args.get('user')
-    user = Users.query.filter_by(id=user_id).first()
-    posts = Posts.query.filter_by(user_id=user_id).all()
+   
     if request.method == 'POST':
         file = request.files['image_upload']
         if file.filename == '':
-            flash('No selected file')
-            return redirect(request.url)
+            pass
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             user.user_image = filename
             db.session.commit()
+        user.fname = request.form.get('fname')
+        user.lname = request.form.get('lname')
+        user.email = request.form.get('email')
+        user.bio = request.form.get('bio')
+        user.location = request.form.get('loc')
+        db.session.commit()
+        for post in posts:
+            post.location = user.location
+            db.session.commit()
         return redirect(
             url_for(
                 'dashboard',
@@ -275,7 +244,9 @@ def update_image():
                 logged_in=current_user.is_authenticated,
                 posts=posts)
         )
-    return render_template('image.html')
+
+    return render_template('edit_page.html', user=user)
+
 
 
 @app.route('/feed', methods=['GET', 'POST'])
@@ -283,8 +254,8 @@ def update_image():
 def feed():
     user_id = request.args.get('user')
     user = Users.query.filter_by(id=user_id).first()
-    user_loc = user.country
-    all_posts = Posts.query.filter_by(country=user_loc).all()
+    user_loc = user.location
+    all_posts = Posts.query.filter_by(location=user_loc).all()
     return render_template(
         'feed.html',
         posts=all_posts,
@@ -302,8 +273,8 @@ def post():
     post = Posts.query.filter_by(id=post_id).first()
     post_author = Users.query.filter_by(id=post.user_id).first()
     user = Users.query.filter_by(id=user_id).first()
-    user_loc = user.country
-    all_posts = Posts.query.filter_by(country=user_loc).all()
+    user_loc = user.location
+    all_posts = Posts.query.filter_by(location=user_loc).all()
     return render_template(
         'post.html',
         post=post,
@@ -326,8 +297,9 @@ def handle_my_custom_event(json):
 
 
 @app.route('/dm', methods=['GET'])
-#@login_required
+@login_required
 def contact():
+    username = request.args.get('em')
     return render_template('contact.html')
 
 
